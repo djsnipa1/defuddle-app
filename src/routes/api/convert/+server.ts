@@ -1,29 +1,28 @@
-import { Defuddle } from 'defuddle/node';
 import { JSDOM } from 'jsdom';
+import { Defuddle } from 'defuddle/node';
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request }) => {
-    try {
-        const { url } = await request.json();
+	try {
+		const { url } = await request.json();
 
-        // Add validation for the URL
-        if (typeof url !== 'string') {
-            return json({ error: 'Invalid request body: "url" must be a string.' }, { status: 400 });
-        }
+		if (!url || typeof url !== 'string') {
+			return json({ error: 'A "url" property with a string value is required.' }, { status: 400 });
+		}
 
-        // Parse HTML from a URL
-        const dom = await JSDOM.fromURL(url);
-        
-        // Convert HTML to markdown using defuddle
-        const result = await Defuddle(dom, {
-            debug: false,
-            markdown: true,
-            url: url
-        });
-        
-        return json({ markdown: result.content });
-    } catch (error: any) { // Explicitly type error as any for now
-        return json({ error: error.message }, { status: 500 });
-    }
+		// Per the defuddle documentation for Node.js:
+		// 1. Use JSDOM to fetch the URL and create a DOM object.
+		const dom = await JSDOM.fromURL(url);
+
+		// 2. Pass the JSDOM object to the Defuddle function.
+		// The first argument should be the entire JSDOM instance, not just the document.
+		// The library will access `dom.window.document` internally.
+		const article = await Defuddle(dom, url);
+		return json(article);
+	} catch (error) {
+		console.error(error);
+		const message = error instanceof Error ? error.message : 'An unknown error occurred';
+		return json({ error: message }, { status: 500 });
+	}
 };

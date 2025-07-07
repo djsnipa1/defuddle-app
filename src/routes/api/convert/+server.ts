@@ -7,6 +7,11 @@ export const POST: RequestHandler = async ({ request }) => {
     try {
         const { url } = await request.json();
 
+        // Add validation for the URL
+        if (typeof url !== 'string') {
+            return json({ error: 'Invalid request body: "url" must be a string.' }, { status: 400 });
+        }
+
         // Parse HTML from a URL
         const dom = await JSDOM.fromURL(url);
         
@@ -18,7 +23,7 @@ export const POST: RequestHandler = async ({ request }) => {
         });
         
         return json({ markdown: result.content });
-    } catch (error) {
+    } catch (error: any) { // Explicitly type error as any for now
         return json({ error: error.message }, { status: 500 });
     }
 };
